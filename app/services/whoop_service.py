@@ -164,9 +164,14 @@ def get_valid_access_token(username="default"):
     """
     Get a valid access token, refreshing if necessary.
     """
+    print(f"🔐 === CHECKING ACCESS TOKEN ===")
+    print(f"   - Username: {username}")
+    print(f"   - Use Supabase: {USE_SUPABASE}")
+    
     if USE_SUPABASE:
         # For Supabase, we need a user_id (UUID)
         user_id = os.getenv("SUPABASE_USER_ID")
+        print(f"   - Supabase User ID: {user_id}")
         
         # Get token from Supabase
         token_info = get_whoop_token(user_id)
@@ -174,22 +179,37 @@ def get_valid_access_token(username="default"):
         # Get token from SQLite database
         token_info = get_user_token(username)
         
-    print(f"Token info from database: {token_info}")
+    print(f"🔍 Token info from database:")
+    if token_info:
+        print(f"   - Has access_token: {bool(token_info.get('access_token'))}")
+        print(f"   - Has refresh_token: {bool(token_info.get('refresh_token'))}")
+        print(f"   - Token type: {token_info.get('token_type', 'Not set')}")
+        print(f"   - Is valid: {token_info.get('is_valid', 'Not checked')}")
+        if token_info.get('access_token'):
+            print(f"   - Token preview: {token_info.get('access_token')[:10]}...")
+    else:
+        print(f"   ❌ No token info found in database")
+        return None
     
     # First check if we have an unexpired token
     if token_info.get("is_valid"):
-        print(f"Using valid token from database")
+        print(f"✅ Using valid token from database")
         return token_info.get("access_token")
     
     # Try to refresh the token if we have a refresh token
     if token_info.get("refresh_token"):
         try:
-            print(f"Attempting to refresh token")
+            print(f"🔄 Attempting to refresh token")
             return refresh_access_token(username)
         except Exception as e:
-            print(f"Error refreshing token: {e}")
+            print(f"❌ Error refreshing token: {e}")
     
-    print(f"No valid token available")
+    # If we have a token but no refresh capability, try using it anyway
+    if token_info.get("access_token"):
+        print(f"⚠️  Using potentially expired token (no refresh available)")
+        return token_info.get("access_token")
+    
+    print(f"❌ No valid token available")
     return None
 
 def get_headers(username="default"):
@@ -199,6 +219,31 @@ def get_headers(username="default"):
     """
     token = get_valid_access_token(username)
     return {"Authorization": f"Bearer {token}"}
+
+def process_oauth_callback(code, user_id):
+    """
+    Process the OAuth callback by exchanging the authorization code for tokens
+    and storing them for the user.
+    """
+    try:
+        # Build the authorization response URL with the code
+        authorization_response = f"{REDIRECT_URI}?code={code}"
+        
+        # Exchange code for token
+        token = get_token_from_code(authorization_response)
+        
+        # Save token to database
+        if USE_SUPABASE:
+            save_whoop_token(user_id, token)
+        else:
+            save_user_token(user_id, token)
+        
+        print(f"OAuth callback processed successfully for user {user_id}")
+        return True
+        
+    except Exception as e:
+        print(f"Error processing OAuth callback: {str(e)}")
+        raise e
 
 def get_daily_recovery(date_str=None, username="default"):
     """
@@ -212,7 +257,13 @@ def get_daily_recovery(date_str=None, username="default"):
     
     print(f"Fetching recovery data for {date_str}")
     url = f"{WHOOP_API_BASE}/v1/recovery"
-    params = {"start": date_str, "end": date_str}
+    
+    # Convert date string to datetime for proper WHOOP API formatting
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    start_dt = date_obj.replace(hour=0, minute=0, second=0).isoformat() + "Z"
+    end_dt = date_obj.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+    
+    params = {"start": start_dt, "end": end_dt}
     
     headers = get_headers(username)
     print(f"Using headers: {headers}")
@@ -262,7 +313,13 @@ def get_daily_strain(date_str=None, username="default"):
     
     print(f"Fetching strain data for {date_str}")
     url = f"{WHOOP_API_BASE}/v1/cycle"
-    params = {"start": date_str, "end": date_str}
+    
+    # Convert date string to datetime for proper WHOOP API formatting
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    start_dt = date_obj.replace(hour=0, minute=0, second=0).isoformat() + "Z"
+    end_dt = date_obj.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+    
+    params = {"start": start_dt, "end": end_dt}
     
     response = requests.get(url, headers=get_headers(username), params=params)
     print(f"Strain API response status: {response.status_code}")
@@ -282,6 +339,16 @@ def get_daily_strain(date_str=None, username="default"):
                 "date": date_str
             }
             
+            # Add metadata fields from the API
+            if "score_state" in record:
+                result["score_state"] = record.get("score_state")
+            if "timezone_offset" in record:
+                result["timezone_offset"] = record.get("timezone_offset")
+            if "start" in record:
+                result["cycle_start"] = record.get("start")
+            if "end" in record:
+                result["cycle_end"] = record.get("end")
+            
             print(f"Extracted strain data: {result}")
             return result
     
@@ -299,8 +366,14 @@ def get_daily_sleep(date_str=None, username="default"):
         date_str = datetime.today().strftime("%Y-%m-%d")
     
     print(f"Fetching sleep data for {date_str}")
-    url = f"{WHOOP_API_BASE}/v1/sleep"
-    params = {"start": date_str, "end": date_str}
+    url = f"{WHOOP_API_BASE}/v1/activity/sleep"
+    
+    # Convert date string to datetime for proper WHOOP API formatting
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    start_dt = date_obj.replace(hour=0, minute=0, second=0).isoformat() + "Z"
+    end_dt = date_obj.replace(hour=23, minute=59, second=59).isoformat() + "Z"
+    
+    params = {"start": start_dt, "end": end_dt}
     
     response = requests.get(url, headers=get_headers(username), params=params)
     print(f"Sleep API response status: {response.status_code}")
@@ -312,9 +385,8 @@ def get_daily_sleep(date_str=None, username="default"):
             record = data["records"][0]
             score = record.get("score", {})
             
-            # Base sleep metrics
+            # Base sleep metrics - removed invalid field reference
             result = {
-                "sleep_quality": score.get("quality_duration_score"),
                 "date": date_str
             }
             
@@ -345,6 +417,37 @@ def get_daily_sleep(date_str=None, username="default"):
                     
                 if "total_rem_sleep_time_milli" in stages:
                     result["rem_sleep_time"] = stages.get("total_rem_sleep_time_milli") / 60000
+                    
+                if "total_light_sleep_time_milli" in stages:
+                    result["light_sleep_time"] = stages.get("total_light_sleep_time_milli") / 60000
+                    
+                if "total_awake_time_milli" in stages:
+                    result["awake_time"] = stages.get("total_awake_time_milli") / 60000
+                    
+                # Additional sleep metrics from API
+                if "sleep_cycle_count" in stages:
+                    result["sleep_cycle_count"] = stages.get("sleep_cycle_count")
+                    
+                if "disturbance_count" in stages:
+                    result["disturbance_count"] = stages.get("disturbance_count")
+            
+            # Add sleep need analysis if available
+            if "sleep_needed" in score:
+                sleep_needed = score.get("sleep_needed", {})
+                if "baseline_milli" in sleep_needed:
+                    result["sleep_need_baseline"] = sleep_needed.get("baseline_milli") / 60000
+                if "need_from_sleep_debt_milli" in sleep_needed:
+                    result["sleep_debt"] = sleep_needed.get("need_from_sleep_debt_milli") / 60000
+                if "need_from_recent_strain_milli" in sleep_needed:
+                    result["strain_sleep_need"] = sleep_needed.get("need_from_recent_strain_milli") / 60000
+            
+            # Add metadata fields
+            if "nap" in record:
+                result["is_nap"] = record.get("nap")
+            if "score_state" in record:
+                result["score_state"] = record.get("score_state")
+            if "timezone_offset" in record:
+                result["timezone_offset"] = record.get("timezone_offset")
             
             print(f"Extracted sleep data: {result}")
             return result
@@ -387,6 +490,10 @@ def get_daily_workouts(date_str=None, username="default"):
             total_strain = 0
             total_time = 0
             max_hr_overall = 0
+            avg_hr_overall = 0
+            total_kilojoules = 0
+            total_distance = 0
+            sport_ids = []
             
             for workout in workouts:
                 score = workout.get("score", {})
@@ -394,6 +501,16 @@ def get_daily_workouts(date_str=None, username="default"):
                     total_strain += score.get("strain", 0)
                 if score and "max_heart_rate" in score:
                     max_hr_overall = max(max_hr_overall, score.get("max_heart_rate", 0))
+                if score and "average_heart_rate" in score:
+                    avg_hr_overall += score.get("average_heart_rate", 0)
+                if score and "kilojoule" in score:
+                    total_kilojoules += score.get("kilojoule", 0)
+                if score and "distance_meter" in score:
+                    total_distance += score.get("distance_meter", 0)
+                
+                # Track sport types
+                if "sport_id" in workout:
+                    sport_ids.append(workout.get("sport_id"))
                 
                 # Calculate duration in minutes
                 if workout.get("start") and workout.get("end"):
@@ -402,11 +519,18 @@ def get_daily_workouts(date_str=None, username="default"):
                     duration = (end_time - start_time).total_seconds() / 60
                     total_time += duration
             
+            # Calculate average heart rate across all workouts
+            avg_hr_overall = avg_hr_overall / workout_count if workout_count > 0 else 0
+            
             result = {
                 "workout_count": workout_count,
                 "workout_strain": total_strain,
                 "workout_duration": total_time,
                 "workout_max_hr": max_hr_overall,
+                "workout_avg_hr": avg_hr_overall,
+                "workout_kilojoules": total_kilojoules,
+                "workout_distance_meters": total_distance,
+                "sport_ids": list(set(sport_ids)),  # Unique sport IDs
                 "date": date_str
             }
             
@@ -416,6 +540,63 @@ def get_daily_workouts(date_str=None, username="default"):
             return {"workout_count": 0, "workout_strain": 0, "date": date_str}
     
     print(f"Failed to get workout data: {response.status_code}, {response.text}")
+    return None
+
+def get_user_profile(username="default"):
+    """
+    Get the user's basic profile information.
+    
+    Returns user profile data including name, email, and user ID.
+    """
+    print(f"Fetching user profile data")
+    url = f"{WHOOP_API_BASE}/v1/user/profile/basic"
+    
+    response = requests.get(url, headers=get_headers(username))
+    print(f"Profile API response status: {response.status_code}")
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Profile API response: {data}")
+        
+        result = {
+            "user_id": data.get("user_id"),
+            "email": data.get("email"),
+            "first_name": data.get("first_name"),
+            "last_name": data.get("last_name")
+        }
+        
+        print(f"Extracted profile data: {result}")
+        return result
+    
+    print(f"Failed to get profile data: {response.status_code}, {response.text}")
+    return None
+
+def get_body_measurements(username="default"):
+    """
+    Get the user's body measurements.
+    
+    Returns height, weight, and max heart rate data.
+    """
+    print(f"Fetching body measurements")
+    url = f"{WHOOP_API_BASE}/v1/user/measurement/body"
+    
+    response = requests.get(url, headers=get_headers(username))
+    print(f"Body measurements API response status: {response.status_code}")
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"Body measurements API response: {data}")
+        
+        result = {
+            "height_meter": data.get("height_meter"),
+            "weight_kilogram": data.get("weight_kilogram"),
+            "max_heart_rate": data.get("max_heart_rate")
+        }
+        
+        print(f"Extracted body measurements: {result}")
+        return result
+    
+    print(f"Failed to get body measurements: {response.status_code}, {response.text}")
     return None
 
 def get_all_daily_metrics(date_str=None, username="default"):
@@ -428,10 +609,25 @@ def get_all_daily_metrics(date_str=None, username="default"):
     if date_str is None:
         date_str = datetime.today().strftime("%Y-%m-%d")
     
+    print(f"📊 === FETCHING ALL WHOOP METRICS ===")
+    print(f"   - Date: {date_str}")
+    print(f"   - Username: {username}")
+    
+    print(f"🔄 Step 3a: Fetching Recovery data...")
     recovery_data = get_daily_recovery(date_str, username) or {}
+    print(f"   - Recovery result: {bool(recovery_data)} ({len(recovery_data)} fields)")
+    
+    print(f"🔄 Step 3b: Fetching Strain data...")
     strain_data = get_daily_strain(date_str, username) or {}
+    print(f"   - Strain result: {bool(strain_data)} ({len(strain_data)} fields)")
+    
+    print(f"🔄 Step 3c: Fetching Sleep data...")
     sleep_data = get_daily_sleep(date_str, username) or {}
+    print(f"   - Sleep result: {bool(sleep_data)} ({len(sleep_data)} fields)")
+    
+    print(f"🔄 Step 3d: Fetching Workout data...")
     workout_data = get_daily_workouts(date_str, username) or {}
+    print(f"   - Workout result: {bool(workout_data)} ({len(workout_data)} fields)")
     
     # Combine all metrics into a single dictionary
     combined_data = {"date": date_str}
@@ -439,6 +635,12 @@ def get_all_daily_metrics(date_str=None, username="default"):
     combined_data.update({k: v for k, v in strain_data.items() if k != "date"})
     combined_data.update({k: v for k, v in sleep_data.items() if k != "date"})
     combined_data.update({k: v for k, v in workout_data.items() if k != "date"})
+    
+    # Count non-null values for summary
+    non_null_count = sum(1 for k, v in combined_data.items() if k != "date" and v is not None)
+    print(f"📋 Combined result: {non_null_count} metrics with values")
+    print(f"   - Total fields: {len(combined_data)}")
+    print(f"   - Sample keys: {list(combined_data.keys())[:5]}...")
     
     return combined_data
 

@@ -1,4 +1,4 @@
-# Burnout Predictor
+# Fire Rescued
 
 A sophisticated web application that helps predict and prevent burnout by analyzing your WHOOP health data combined with self-reported mood ratings. It leverages AI to provide personalized insights and recommendations based on your unique health patterns.
 

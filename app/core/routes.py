@@ -6,7 +6,7 @@ Includes dashboard, mood input, and data visualization
 import os
 import logging
 from datetime import datetime, date, timedelta
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
 
 from . import core_bp
 from app.auth.utils import get_user_id
@@ -400,41 +400,67 @@ def manual_fetch_data():
     """
     Manually fetch Whoop data for a specific date or date range.
     """
+    print("🔄 === SYNC NOW BUTTON CLICKED ===")
+    
     date_str = request.form.get("date")
     user_id = get_user_id()
     
+    print(f"📝 Step 1: Sync initiated")
+    print(f"   - User ID: {user_id}")
+    print(f"   - Date from form: {date_str}")
+    
     if not date_str:
         date_str = date.today().strftime("%Y-%m-%d")
+        print(f"   - Using today's date: {date_str}")
     
     try:
         # Convert to date object to validate format
         date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+        print(f"✅ Step 2: Date validation passed - {date_str}")
         
         # Fetch data using the user's Whoop token
+        print(f"🚀 Step 3: Starting WHOOP API calls for {date_str}")
         logger.info(f"Fetching Whoop data for user {user_id} on {date_str}")
         metrics = get_all_daily_metrics(date_str, user_id)
         
+        print(f"📊 Step 4: API calls completed")
+        print(f"   - Metrics returned: {bool(metrics)}")
+        if metrics:
+            # Filter out None values and date for counting
+            non_null_metrics = {k: v for k, v in metrics.items() if k != 'date' and v is not None}
+            print(f"   - Non-null fields: {len(non_null_metrics)}")
+            print(f"   - Fields: {list(non_null_metrics.keys())}")
+        
         if metrics and any(v is not None for k, v in metrics.items() if k != 'date'):
+            print(f"💾 Step 5: Saving data to database")
             # Store in database
             if USE_SUPABASE:
                 save_daily_metrics(user_id, metrics)
+                print(f"   - Saved to Supabase")
             else:
                 add_or_update_daily_metrics(metrics)
+                print(f"   - Saved to SQLite")
                 
             flash(f"Successfully fetched Whoop data for {date_str}")
             logger.info(f"Successfully stored metrics for {date_str}")
+            print(f"✅ Step 6: Success! Data saved and user notified")
         else:
+            print(f"⚠️  Step 5: No data to save")
             flash(f"No Whoop data available for {date_str}")
             logger.warning(f"No data available for {date_str}")
+            print(f"   - All metrics were None or empty")
         
+        print(f"🔄 Step 7: Redirecting to dashboard for {date_str}")
         # Redirect back to the same date's dashboard
         return redirect(url_for('core.dashboard', selected_date=date_str))
         
     except ValueError as e:
+        print(f"❌ Error: Invalid date format - {str(e)}")
         logger.error(f"Invalid date format: {str(e)}")
         flash("Please enter a valid date in YYYY-MM-DD format.")
         return redirect(url_for('core.dashboard'))
     except Exception as e:
+        print(f"❌ Error: Exception occurred - {str(e)}")
         logger.error(f"Error fetching data: {str(e)}")
         flash(f"Error fetching data: {str(e)}")
         return redirect(url_for('core.dashboard'))
@@ -525,7 +551,7 @@ def auth():
     authorization_url, state = get_auth_url()
     
     # Store the state in the session for later validation
-    flask_session['oauth_state'] = state
+    session['oauth_state'] = state
     
     # Print the URL for debugging
     print(f"Authorization URL: {authorization_url}")
