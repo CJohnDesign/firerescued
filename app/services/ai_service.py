@@ -10,6 +10,9 @@ from datetime import datetime, timedelta
 from openai import OpenAI
 from dotenv import load_dotenv
 
+# Import fallback prompt
+from app.prompts.fallback_prompt import FALLBACK_SYSTEM_PROMPT
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,6 +50,34 @@ class BurnoutInsightsEngine:
         # Get model preference (default to GPT-4o mini which is cheaper but powerful)
         self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         logger.info(f"Using model: {self.model}")
+    
+    def _load_system_prompt(self):
+        """
+        Load the system prompt from the external markdown file.
+        
+        Returns:
+            str: System prompt content
+        """
+        try:
+            # Get the prompt file path relative to the current file
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            prompt_file = os.path.join(current_dir, '..', 'prompts', 'system_prompt.md')
+            
+            # Read the prompt file
+            with open(prompt_file, 'r', encoding='utf-8') as f:
+                prompt_content = f.read()
+            
+            logger.info("System prompt loaded successfully from file")
+            return prompt_content
+            
+        except FileNotFoundError:
+            logger.error("System prompt file not found, using firefighter-specific fallback prompt")
+            # Fallback to firefighter-specific prompt if file is missing
+            return FALLBACK_SYSTEM_PROMPT
+        except Exception as e:
+            logger.error(f"Error loading system prompt: {str(e)}")
+            # Return firefighter-specific fallback prompt on any error
+            return FALLBACK_SYSTEM_PROMPT
     
     def _prepare_metrics_context(self, metrics_data, days=7):
         """
@@ -189,20 +220,8 @@ class BurnoutInsightsEngine:
             if not query:
                 query = "Based on my recent health metrics, provide insights about my burnout risk and specific, actionable recommendations to improve my well-being."
             
-            # Create system prompt with instructions
-            system_prompt = """
-You are a professional health analytics AI assistant specializing in burnout prevention. Your expertise includes analyzing biometric data (HRV, recovery, sleep), mood fluctuations, and their correlation with burnout risk. You communicate in a supportive, constructive manner, offering personalized insights while avoiding generic advice.
-
-Your primary objectives are to:
-1. Analyze the user's health data to identify patterns and risk factors
-2. Provide specific, data-driven insights about their burnout risk level
-3. Offer 2-3 highly specific and personalized recommendations relevant to their situation
-4. Respond directly to any questions they ask about their data
-5. Format your response to be easy to read with concise sections
-
-Format your response with markdown headers for each section and bullet points for recommendations.
-Keep your entire response under 350 words, prioritizing specificity and relevance over length.
-"""
+            # Load system prompt from external file
+            system_prompt = self._load_system_prompt()
 
             # Prepare the messages for the API call
             messages = [
