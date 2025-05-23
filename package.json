@@ -1,7 +1,7 @@
 {
   "name": "Fire Rescued",
   "version": "1.0.0",
-  "description": "A burnout predictor that combines Whoop physiological data with self-reported mood to identify burnout risk",
+  "description": "A Fire Rescued that combines Whoop physiological data with self-reported mood to identify burnout risk",
   "main": "app.py",
   "scripts": {
     "start": "python app.py",

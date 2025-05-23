@@ -1,5 +1,5 @@
 """
-Supabase database client and operations for Burnout Predictor
+Supabase database client and operations for Fire Rescued
 """
 
 import os

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Main entry point for the Burnout Predictor application.
+Main entry point for the Fire Rescued application.
 """
 
 import os

@@ -1,5 +1,5 @@
 """
-Core functionality for Burnout Predictor
+Core functionality for Fire Rescued
 Includes dashboard, data input, and main user interface
 """
 

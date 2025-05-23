@@ -1,5 +1,5 @@
 """
-Core routes for Burnout Predictor application
+Core routes for Fire Rescued application
 Includes dashboard, mood input, and data visualization
 """
 

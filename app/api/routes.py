@@ -1,5 +1,5 @@
 """
-API routes for Burnout Predictor
+API routes for Fire Rescued
 JSON endpoints for data retrieval and AI insights
 """
 

@@ -128,7 +128,7 @@ def migrate_daily_metrics(admin_user_id):
         return 0
 
 def main():
-    print("Initializing Supabase for Burnout Predictor")
+    print("Initializing Supabase for Fire Rescued")
     print("===========================================")
     
     # Test connection to Supabase

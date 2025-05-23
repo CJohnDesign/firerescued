@@ -1,5 +1,5 @@
 """
-Burnout Predictor: A web application for tracking and predicting burnout risk.
+Fire Rescued: A web application for tracking and predicting burnout risk.
 Uses WHOOP health data and AI-powered insights to help users monitor their well-being.
 """
 

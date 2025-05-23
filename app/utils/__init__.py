@@ -1,3 +1,3 @@
 """
-Utility functions and scripts for Burnout Predictor
+Utility functions and scripts for Fire Rescued
 """

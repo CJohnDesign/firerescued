@@ -1,7 +1,7 @@
-# Burnout Predictor - Project Context for AI Assistants
+# Fire Rescued - Project Context for AI Assistants
 
 ## Project Overview
-The Burnout Predictor is a web application that helps predict and prevent burnout by analyzing WHOOP health data combined with self-reported mood ratings. It leverages AI to provide personalized insights and recommendations based on health patterns.
+The Fire Rescued is a web application that helps predict and prevent burnout by analyzing WHOOP health data combined with self-reported mood ratings. It leverages AI to provide personalized insights and recommendations based on health patterns.
 
 ## Key Features
 - **WHOOP API Integration:** Automatically fetches daily health metrics (recovery score, strain, HRV, sleep quality)

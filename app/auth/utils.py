@@ -1,5 +1,5 @@
 """
-Authentication utilities for Burnout Predictor application
+Authentication utilities for Fire Rescued application
 """
 
 import os

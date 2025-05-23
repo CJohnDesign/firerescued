@@ -1,5 +1,5 @@
 """
-API blueprint for Burnout Predictor
+API blueprint for Fire Rescued
 Provides JSON API endpoints for frontend integration
 """
 

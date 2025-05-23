@@ -1,5 +1,5 @@
 """
-Authentication system for Burnout Predictor
+Authentication system for Fire Rescued
 Handles user signup, login, and session management.
 """
 

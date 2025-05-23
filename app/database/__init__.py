@@ -1,5 +1,5 @@
 """
-Database package for Burnout Predictor
+Database package for Fire Rescued
 Handles Supabase and SQLite database connections and operations
 """
 

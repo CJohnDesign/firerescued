@@ -9,7 +9,7 @@ class handler(BaseHTTPRequestHandler):
         html_content = """
         <html>
             <head>
-                <title>Burnout Predictor</title>
+                <title>Fire Rescued</title>
                 <style>
                     body {
                         font-family: Arial, sans-serif;
@@ -39,9 +39,9 @@ class handler(BaseHTTPRequestHandler):
                 </style>
             </head>
             <body>
-                <h1>Burnout Predictor</h1>
+                <h1>Fire Rescued</h1>
                 <div class="message">
-                    <p>Welcome to Burnout Predictor! This is a simple placeholder page deployed on Vercel.</p>
+                    <p>Welcome to Fire Rescued! This is a simple placeholder page deployed on Vercel.</p>
                     <p>The full application requires configuration of environment variables for:</p>
                     <ul>
                         <li>WHOOP API integration</li>
