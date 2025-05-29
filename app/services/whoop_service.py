@@ -1,7 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 import uuid
@@ -27,6 +27,9 @@ WHOOP_TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
 CLIENT_ID = os.getenv("WHOOP_CLIENT_ID")
 CLIENT_SECRET = os.getenv("WHOOP_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("WHOOP_REDIRECT_URI", "http://127.0.0.1:3000/callback")
+
+# Token refresh buffer - refresh tokens this many minutes before they expire
+TOKEN_REFRESH_BUFFER_MINUTES = 10
 
 def get_auth_url():
     """
@@ -89,6 +92,63 @@ def get_client_credentials_token():
     )
     return token
 
+def is_token_expired(token_info):
+    """
+    Check if a token is expired based on creation time and expires_in.
+    
+    Args:
+        token_info: Dictionary containing token information
+        
+    Returns:
+        bool: True if token is expired or will expire soon
+    """
+    if not token_info:
+        print("🔍 No token info provided - considering expired")
+        return True
+    
+    # Check if we have the necessary fields
+    created_at = token_info.get("created_at") or token_info.get("updated_at")
+    expires_in = token_info.get("expires_in")
+    
+    if not created_at or not expires_in:
+        print("🔍 Missing creation time or expires_in - considering expired")
+        return True
+    
+    try:
+        # Parse creation time - handle both ISO format and SQLite datetime
+        if isinstance(created_at, str):
+            if 'T' in created_at:
+                # ISO format from Supabase
+                created_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            else:
+                # SQLite datetime format
+                created_time = datetime.fromisoformat(created_at)
+        else:
+            # Assume it's already a datetime object
+            created_time = created_at
+        
+        # Calculate expiry time with buffer
+        expires_in_seconds = int(expires_in)
+        buffer_seconds = TOKEN_REFRESH_BUFFER_MINUTES * 60
+        effective_expiry = created_time + timedelta(seconds=expires_in_seconds - buffer_seconds)
+        
+        current_time = datetime.now()
+        is_expired = current_time >= effective_expiry
+        
+        print(f"🔍 Token expiration check:")
+        print(f"   - Created: {created_time}")
+        print(f"   - Expires in: {expires_in_seconds} seconds")
+        print(f"   - Buffer: {buffer_seconds} seconds")
+        print(f"   - Effective expiry: {effective_expiry}")
+        print(f"   - Current time: {current_time}")
+        print(f"   - Is expired: {is_expired}")
+        
+        return is_expired
+        
+    except Exception as e:
+        print(f"🔍 Error checking token expiration: {e} - considering expired")
+        return True
+
 def save_token_to_env(token, username="default"):
     """
     Save the token information to the database.
@@ -100,13 +160,18 @@ def save_token_to_env(token, username="default"):
         user_id = os.getenv("SUPABASE_USER_ID", str(uuid.uuid4()))
         
         # Store token in Supabase
-        access_token = save_whoop_token(user_id, token)
+        save_whoop_token(user_id, token)
+        access_token = token.get("access_token")
     else:
         # Store token in SQLite database
-        access_token = save_user_token(token, username)
+        token_obj = save_user_token(username, token)
+        access_token = token.get("access_token")
     
     # Log saved token info 
-    print(f"Token saved for user {username} - Access: {access_token[:10] if access_token else 'None'}..., Expires in: {token.get('expires_in', 0)} seconds")
+    print(f"💾 Token saved for user {username}:")
+    print(f"   - Access token: {access_token[:10] if access_token else 'None'}...")
+    print(f"   - Expires in: {token.get('expires_in', 0)} seconds")
+    print(f"   - Has refresh token: {bool(token.get('refresh_token'))}")
     
     return access_token
 
@@ -114,10 +179,14 @@ def refresh_access_token(username="default"):
     """
     Refresh the access token using the stored refresh token.
     """
+    print(f"🔄 === REFRESHING ACCESS TOKEN ===")
+    print(f"   - Username: {username}")
+    
     if USE_SUPABASE:
         # For Supabase, we need a user_id (UUID)
         # In production, you'd get this from the session
         user_id = os.getenv("SUPABASE_USER_ID")
+        print(f"   - Supabase User ID: {user_id}")
         
         # Get token from Supabase
         token_info = get_whoop_token(user_id)
@@ -125,10 +194,13 @@ def refresh_access_token(username="default"):
         # Get token from SQLite database
         token_info = get_user_token(username)
         
-    refresh_token = token_info.get("refresh_token")
+    refresh_token = token_info.get("refresh_token") if token_info else None
     
     if not refresh_token:
+        print("❌ No refresh token available")
         raise Exception("No refresh token available")
+    
+    print(f"   - Using refresh token: {refresh_token[:10]}...")
     
     token_data = {
         'grant_type': 'refresh_token',
@@ -137,16 +209,30 @@ def refresh_access_token(username="default"):
         'client_secret': CLIENT_SECRET
     }
     
-    response = requests.post(WHOOP_TOKEN_URL, data=token_data)
-    if response.status_code == 200:
-        token = response.json()
-        return save_token_to_env(token, username)
-    else:
-        raise Exception(f"Error refreshing token: {response.text}")
+    try:
+        response = requests.post(WHOOP_TOKEN_URL, data=token_data)
+        print(f"   - Refresh response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            token = response.json()
+            print(f"✅ Token refreshed successfully")
+            print(f"   - New expires_in: {token.get('expires_in', 0)} seconds")
+            
+            # Save the refreshed token
+            return save_token_to_env(token, username)
+        else:
+            error_msg = f"Error refreshing token: HTTP {response.status_code} - {response.text}"
+            print(f"❌ {error_msg}")
+            raise Exception(error_msg)
+            
+    except requests.RequestException as e:
+        error_msg = f"Network error refreshing token: {str(e)}"
+        print(f"❌ {error_msg}")
+        raise Exception(error_msg)
 
 def is_token_valid(username="default"):
     """
-    Check if the current access token is still valid.
+    Check if the current access token is still valid (not expired).
     """
     if USE_SUPABASE:
         # For Supabase, we need a user_id (UUID)
@@ -158,7 +244,8 @@ def is_token_valid(username="default"):
         # Get token from SQLite database
         token_info = get_user_token(username)
         
-    return token_info.get("is_valid", False)
+    # Use the new expiration checking logic
+    return not is_token_expired(token_info)
 
 def get_valid_access_token(username="default"):
     """
@@ -184,30 +271,35 @@ def get_valid_access_token(username="default"):
         print(f"   - Has access_token: {bool(token_info.get('access_token'))}")
         print(f"   - Has refresh_token: {bool(token_info.get('refresh_token'))}")
         print(f"   - Token type: {token_info.get('token_type', 'Not set')}")
-        print(f"   - Is valid: {token_info.get('is_valid', 'Not checked')}")
+        print(f"   - Expires in: {token_info.get('expires_in', 'Not set')} seconds")
         if token_info.get('access_token'):
             print(f"   - Token preview: {token_info.get('access_token')[:10]}...")
     else:
         print(f"   ❌ No token info found in database")
         return None
     
-    # First check if we have an unexpired token
-    if token_info.get("is_valid"):
+    # Check if token is expired using our improved logic
+    if not is_token_expired(token_info):
         print(f"✅ Using valid token from database")
         return token_info.get("access_token")
     
-    # Try to refresh the token if we have a refresh token
+    # Token is expired or will expire soon - try to refresh
     if token_info.get("refresh_token"):
         try:
-            print(f"🔄 Attempting to refresh token")
+            print(f"🔄 Token expired/expiring soon - attempting refresh")
             return refresh_access_token(username)
         except Exception as e:
             print(f"❌ Error refreshing token: {e}")
-    
-    # If we have a token but no refresh capability, try using it anyway
-    if token_info.get("access_token"):
-        print(f"⚠️  Using potentially expired token (no refresh available)")
-        return token_info.get("access_token")
+            
+            # If refresh fails, try using the existing token anyway (might still work)
+            if token_info.get("access_token"):
+                print(f"⚠️  Refresh failed - trying with potentially expired token")
+                return token_info.get("access_token")
+    else:
+        # No refresh token available
+        if token_info.get("access_token"):
+            print(f"⚠️  No refresh token available - using potentially expired token")
+            return token_info.get("access_token")
     
     print(f"❌ No valid token available")
     return None
@@ -218,7 +310,93 @@ def get_headers(username="default"):
     Attempts to refresh the token if it's expired.
     """
     token = get_valid_access_token(username)
+    if not token:
+        raise Exception("No valid access token available")
     return {"Authorization": f"Bearer {token}"}
+
+def check_token_status(username="default"):
+    """
+    Check the current status of the stored WHOOP token.
+    Returns detailed information about token validity and expiration.
+    """
+    print(f"🔍 === TOKEN STATUS CHECK ===")
+    print(f"   - Username: {username}")
+    
+    if USE_SUPABASE:
+        user_id = os.getenv("SUPABASE_USER_ID")
+        token_info = get_whoop_token(user_id)
+    else:
+        token_info = get_user_token(username)
+    
+    if not token_info:
+        return {
+            "status": "no_token",
+            "message": "No token found in database",
+            "has_access_token": False,
+            "has_refresh_token": False,
+            "is_expired": True
+        }
+    
+    has_access = bool(token_info.get("access_token"))
+    has_refresh = bool(token_info.get("refresh_token"))
+    is_expired = is_token_expired(token_info)
+    
+    status_info = {
+        "status": "valid" if (has_access and not is_expired) else "expired" if has_access else "missing",
+        "has_access_token": has_access,
+        "has_refresh_token": has_refresh,
+        "is_expired": is_expired,
+        "expires_in": token_info.get("expires_in"),
+        "created_at": token_info.get("created_at"),
+        "updated_at": token_info.get("updated_at")
+    }
+    
+    if has_access and not is_expired:
+        status_info["message"] = "Token is valid and not expired"
+    elif has_access and is_expired and has_refresh:
+        status_info["message"] = "Token is expired but can be refreshed"
+    elif has_access and is_expired:
+        status_info["message"] = "Token is expired and no refresh token available"
+    else:
+        status_info["message"] = "No access token found"
+    
+    print(f"   - Status: {status_info['status']}")
+    print(f"   - Message: {status_info['message']}")
+    print(f"   - Has access token: {has_access}")
+    print(f"   - Has refresh token: {has_refresh}")
+    print(f"   - Is expired: {is_expired}")
+    
+    return status_info
+
+def test_api_connectivity(username="default"):
+    """
+    Test connectivity to WHOOP API using the current token.
+    Returns True if API is accessible, False otherwise.
+    """
+    print(f"🌐 === TESTING API CONNECTIVITY ===")
+    
+    try:
+        headers = get_headers(username)
+        
+        # Test with a simple profile endpoint
+        url = f"{WHOOP_API_BASE}/v1/user/profile/basic"
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        print(f"   - API Response: {response.status_code}")
+        
+        if response.status_code == 200:
+            print(f"✅ API connectivity successful")
+            return True
+        elif response.status_code == 401:
+            print(f"❌ API connectivity failed - Invalid/expired token")
+            return False
+        else:
+            print(f"⚠️  API connectivity failed - HTTP {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ API connectivity test failed: {str(e)}")
+        return False
 
 def process_oauth_callback(code, user_id):
     """
@@ -255,7 +433,7 @@ def get_daily_recovery(date_str=None, username="default"):
     if date_str is None:
         date_str = datetime.today().strftime("%Y-%m-%d")
     
-    print(f"Fetching recovery data for {date_str}")
+    print(f"📊 Fetching recovery data for {date_str}")
     url = f"{WHOOP_API_BASE}/v1/recovery"
     
     # Convert date string to datetime for proper WHOOP API formatting
@@ -265,41 +443,52 @@ def get_daily_recovery(date_str=None, username="default"):
     
     params = {"start": start_dt, "end": end_dt}
     
-    headers = get_headers(username)
-    print(f"Using headers: {headers}")
-    
-    response = requests.get(url, headers=headers, params=params)
-    print(f"Recovery API response status: {response.status_code}")
-    
-    if response.status_code == 200:
-        data = response.json()
-        print(f"Recovery API response: {data}")
-        if data.get("records") and len(data["records"]) > 0:
-            record = data["records"][0]
-            score = record.get("score", {})
-            
-            result = {
-                "recovery_score": score.get("recovery_score"),
-                "resting_hr": score.get("resting_heart_rate"),
-                "hrv": score.get("hrv_rmssd_milli"),
-                "date": date_str
-            }
-            
-            # Add optional WHOOP 4.0 metrics if available
-            if "spo2_percentage" in score:
-                result["spo2_percentage"] = score.get("spo2_percentage")
-            
-            if "skin_temp_celsius" in score:
-                result["skin_temp_celsius"] = score.get("skin_temp_celsius")
+    try:
+        headers = get_headers(username)
+        print(f"   - Using headers: {headers}")
+        
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        print(f"   - Recovery API response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"   - Recovery API response: {data}")
+            if data.get("records") and len(data["records"]) > 0:
+                record = data["records"][0]
+                score = record.get("score", {})
                 
-            # Additional metadata
-            result["user_calibrating"] = score.get("user_calibrating", False)
+                result = {
+                    "recovery_score": score.get("recovery_score"),
+                    "resting_hr": score.get("resting_heart_rate"),
+                    "hrv": score.get("hrv_rmssd_milli"),
+                    "date": date_str
+                }
+                
+                # Add optional WHOOP 4.0 metrics if available
+                if "spo2_percentage" in score:
+                    result["spo2_percentage"] = score.get("spo2_percentage")
+                
+                if "skin_temp_celsius" in score:
+                    result["skin_temp_celsius"] = score.get("skin_temp_celsius")
+                    
+                # Additional metadata
+                result["user_calibrating"] = score.get("user_calibrating", False)
+                
+                print(f"✅ Extracted recovery data: {result}")
+                return result
+            else:
+                print(f"   - No recovery records found for {date_str}")
+                return None
+        elif response.status_code == 401:
+            print(f"❌ Unauthorized - token may be expired")
+            return None
+        else:
+            print(f"❌ Failed to get recovery data: {response.status_code} - {response.text}")
+            return None
             
-            print(f"Extracted recovery data: {result}")
-            return result
-    
-    print(f"Failed to get recovery data: {response.status_code}, {response.text}")
-    return None
+    except Exception as e:
+        print(f"❌ Error fetching recovery data: {str(e)}")
+        return None
 
 def get_daily_strain(date_str=None, username="default"):
     """
@@ -311,7 +500,7 @@ def get_daily_strain(date_str=None, username="default"):
     if date_str is None:
         date_str = datetime.today().strftime("%Y-%m-%d")
     
-    print(f"Fetching strain data for {date_str}")
+    print(f"📊 Fetching strain data for {date_str}")
     url = f"{WHOOP_API_BASE}/v1/cycle"
     
     # Convert date string to datetime for proper WHOOP API formatting
@@ -321,39 +510,52 @@ def get_daily_strain(date_str=None, username="default"):
     
     params = {"start": start_dt, "end": end_dt}
     
-    response = requests.get(url, headers=get_headers(username), params=params)
-    print(f"Strain API response status: {response.status_code}")
-    
-    if response.status_code == 200:
-        data = response.json()
-        print(f"Strain API response: {data}")
-        if data.get("records") and len(data["records"]) > 0:
-            record = data["records"][0]
-            score = record.get("score", {})
+    try:
+        headers = get_headers(username)
+        
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+        print(f"   - Strain API response status: {response.status_code}")
+        
+        if response.status_code == 200:
+            data = response.json()
+            print(f"   - Strain API response: {data}")
+            if data.get("records") and len(data["records"]) > 0:
+                record = data["records"][0]
+                score = record.get("score", {})
+                
+                result = {
+                    "strain": score.get("strain"),
+                    "avg_hr": score.get("average_heart_rate"),
+                    "max_hr": score.get("max_heart_rate"),
+                    "kilojoules": score.get("kilojoule"),
+                    "date": date_str
+                }
+                
+                # Add metadata fields from the API
+                if "score_state" in record:
+                    result["score_state"] = record.get("score_state")
+                if "timezone_offset" in record:
+                    result["timezone_offset"] = record.get("timezone_offset")
+                if "start" in record:
+                    result["cycle_start"] = record.get("start")
+                if "end" in record:
+                    result["cycle_end"] = record.get("end")
+                
+                print(f"✅ Extracted strain data: {result}")
+                return result
+            else:
+                print(f"   - No strain records found for {date_str}")
+                return None
+        elif response.status_code == 401:
+            print(f"❌ Unauthorized - token may be expired")
+            return None
+        else:
+            print(f"❌ Failed to get strain data: {response.status_code} - {response.text}")
+            return None
             
-            result = {
-                "strain": score.get("strain"),
-                "avg_hr": score.get("average_heart_rate"),
-                "max_hr": score.get("max_heart_rate"),
-                "kilojoules": score.get("kilojoule"),
-                "date": date_str
-            }
-            
-            # Add metadata fields from the API
-            if "score_state" in record:
-                result["score_state"] = record.get("score_state")
-            if "timezone_offset" in record:
-                result["timezone_offset"] = record.get("timezone_offset")
-            if "start" in record:
-                result["cycle_start"] = record.get("start")
-            if "end" in record:
-                result["cycle_end"] = record.get("end")
-            
-            print(f"Extracted strain data: {result}")
-            return result
-    
-    print(f"Failed to get strain data: {response.status_code}, {response.text}")
-    return None
+    except Exception as e:
+        print(f"❌ Error fetching strain data: {str(e)}")
+        return None
 
 def get_daily_sleep(date_str=None, username="default"):
     """

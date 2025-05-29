@@ -187,8 +187,19 @@ def get_user_token(user_id):
         "access_token": token.access_token,
         "refresh_token": token.refresh_token,
         "token_type": token.token_type,
-        "expires_in": token.expires_in
+        "expires_in": token.expires_in,
+        "created_at": token.created_at.isoformat() if token.created_at else None,
+        "updated_at": token.updated_at.isoformat() if token.updated_at else None
     }
+
+def delete_user_token(user_id):
+    """Delete user's WHOOP token"""
+    token = session.query(WhoopToken).filter_by(user_id=user_id).first()
+    if token:
+        session.delete(token)
+        session.commit()
+        return True
+    return False
 
 # Metrics Functions
 def add_or_update_daily_metrics(metrics_data, mood_data=None):

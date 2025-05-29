@@ -42,7 +42,7 @@ if USE_SUPABASE:
         # Auth functions
         sign_up, sign_in, sign_out, get_current_user,
         # Whoop token functions
-        save_whoop_token, get_whoop_token,
+        save_whoop_token, get_whoop_token, delete_whoop_token,
         # Metrics functions
         save_daily_metrics, get_daily_metrics, get_metrics_range, delete_mood_data,
         # Settings functions
@@ -53,7 +53,7 @@ else:
         # Auth functions
         create_user as sign_up, get_user_by_email, get_user_by_id,
         # Whoop token functions
-        save_user_token as save_whoop_token, get_user_token as get_whoop_token,
+        save_user_token as save_whoop_token, get_user_token as get_whoop_token, delete_user_token as delete_whoop_token,
         # Metrics functions
         add_or_update_daily_metrics as save_daily_metrics, 
         get_all_metrics as get_daily_metrics,

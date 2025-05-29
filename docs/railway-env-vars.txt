@@ -1,0 +1,34 @@
+# Railway Environment Variables for Fire Rescued
+# Copy these into your Railway project's environment variables section
+
+# Flask Configuration
+FLASK_ENV=production
+FLASK_SECRET_KEY=your-secret-key-here-generate-a-strong-random-string
+PORT=3000
+
+# WHOOP API Integration
+# Get these from: https://developer.whoop.com/
+WHOOP_CLIENT_ID=your-whoop-client-id
+WHOOP_CLIENT_SECRET=your-whoop-client-secret
+REDIRECT_URI=https://your-railway-domain.railway.app
+
+# Supabase Database
+# Get these from: https://supabase.com/dashboard/project/[your-project]/settings/api
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-anon-public-key
+SUPABASE_SERVICE_KEY=your-service-role-secret-key
+SUPABASE_USER_ID=your-user-id-from-supabase
+
+# OpenAI API
+# Get from: https://platform.openai.com/api-keys
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4o
+
+# Optional: Monitoring (can skip initially)
+# NEW_RELIC_LICENSE_KEY=your-license-key
+
+# Instructions:
+# 1. Replace all "your-xxx" values with actual credentials
+# 2. Generate a strong random string for FLASK_SECRET_KEY
+# 3. Update REDIRECT_URI with your actual Railway domain after deployment
+# 4. Test each integration step by step 

@@ -714,9 +714,19 @@ def disconnect_whoop():
     user_id = get_user_id()
     
     try:
+        # Import the delete function based on which database backend is being used
+        from app.database import delete_whoop_token
+        
         # Remove the token from the database
-        # TODO: Implement token deletion
-        flash("WHOOP account disconnected successfully")
+        result = delete_whoop_token(user_id)
+        
+        if result:
+            flash("WHOOP account disconnected successfully")
+            logger.info(f"WHOOP token deleted for user {user_id}")
+        else:
+            flash("WHOOP account was already disconnected")
+            logger.warning(f"No WHOOP token found to delete for user {user_id}")
+            
     except Exception as e:
         logger.error(f"Error disconnecting WHOOP: {str(e)}")
         flash(f"Error disconnecting WHOOP: {str(e)}")

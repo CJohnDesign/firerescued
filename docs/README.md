@@ -17,6 +17,10 @@ Welcome to the comprehensive documentation for Fire Rescued - a sophisticated bu
 - [**User Stories**](./product/user-stories.md) - User journey and requirements
 - [**Roadmap**](./product/roadmap.md) - Development roadmap and priorities
 
+### 🐛 Issues & Bug Tracking
+- [**Issues Directory**](./issues/README.md) - Bug reports, research spikes, and feature requests
+- [**Issue #001**](./issues/001-whoop-sync-no-data-token-investigation.md) - Whoop sync token investigation
+
 ### 🛠️ Development
 - [**Setup Guide**](./development/setup.md) - Development environment setup
 - [**Contributing**](./development/contributing.md) - Contribution guidelines

@@ -13,6 +13,13 @@ logger = logging.getLogger(__name__)
 # Global Supabase client instance
 supabase = None
 
+def ensure_supabase_client():
+    """Ensure Supabase client is initialized"""
+    global supabase
+    if supabase is None:
+        init_supabase_client()
+    return supabase
+
 def init_supabase_client(url=None, key=None, service_key=None):
     """Initialize the Supabase client"""
     global supabase
@@ -23,12 +30,15 @@ def init_supabase_client(url=None, key=None, service_key=None):
     
     if not url or not key:
         logger.error("Supabase URL or API key not provided")
+        logger.error(f"SUPABASE_URL: {'Set' if url else 'Missing'}")
+        logger.error(f"SUPABASE_KEY: {'Set' if key else 'Missing'}")
         raise ValueError("Supabase URL and API key are required")
     
     # Create Supabase client
     try:
         supabase = create_client(url, key)
-        logger.info("Supabase client initialized")
+        logger.info("Supabase client initialized successfully")
+        return supabase
     except Exception as e:
         logger.error(f"Failed to initialize Supabase client: {str(e)}")
         raise
@@ -102,8 +112,11 @@ def get_current_user():
 # Whoop Token Functions
 def save_whoop_token(user_id, token_data):
     """Save WHOOP API token to Supabase"""
+    # Ensure client is initialized
+    client = ensure_supabase_client()
+    
     # Check if token already exists
-    existing = supabase.table("whoop_tokens").select("*").eq("user_id", user_id).execute()
+    existing = client.table("whoop_tokens").select("*").eq("user_id", user_id).execute()
     
     # Prepare token data
     token_info = {
@@ -117,19 +130,30 @@ def save_whoop_token(user_id, token_data):
     
     # Update or insert token
     if existing.data and len(existing.data) > 0:
-        response = supabase.table("whoop_tokens").update(token_info).eq("user_id", user_id).execute()
+        response = client.table("whoop_tokens").update(token_info).eq("user_id", user_id).execute()
     else:
         token_info["created_at"] = datetime.now().isoformat()
-        response = supabase.table("whoop_tokens").insert(token_info).execute()
+        response = client.table("whoop_tokens").insert(token_info).execute()
     
     return response.data
 
 def get_whoop_token(user_id):
     """Get WHOOP API token from Supabase"""
-    response = supabase.table("whoop_tokens").select("*").eq("user_id", user_id).execute()
+    # Ensure client is initialized
+    client = ensure_supabase_client()
+    
+    response = client.table("whoop_tokens").select("*").eq("user_id", user_id).execute()
     if response.data and len(response.data) > 0:
         return response.data[0]
     return None
+
+def delete_whoop_token(user_id):
+    """Delete WHOOP API token from Supabase"""
+    # Ensure client is initialized
+    client = ensure_supabase_client()
+    
+    response = client.table("whoop_tokens").delete().eq("user_id", user_id).execute()
+    return response.data
 
 # Metrics Functions
 def save_daily_metrics(user_id, metrics_data, mood_data=None):
