@@ -145,7 +145,29 @@ Refer to [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for detailed instructions on set
 - OpenAI API calls follow strict data minimization principles
 - No third-party analytics or tracking
 
-## Deploying to Vercel
+## Deploying to Production
+
+### 🚂 Railway (Recommended)
+
+**Railway is the perfect platform for Fire Rescued** because it natively supports Python Flask applications with all features intact.
+
+✅ **What works perfectly on Railway:**
+- Full Flask application with all routes
+- Background APScheduler for WHOOP data fetching
+- Database connections to Supabase
+- Environment variables and secrets management
+- Real-time logging and monitoring
+- Automatic deployments from GitHub
+
+**Quick Deploy:**
+1. Sign up at [Railway](https://railway.app)
+2. Connect your GitHub repository
+3. Configure environment variables
+4. Deploy automatically!
+
+📖 **[Complete Railway Deployment Guide](docs/RAILWAY_DEPLOYMENT.md)**
+
+### Alternative: Vercel (Advanced Users)
 
 Due to Vercel's serverless function size limitations with Python projects, there are two deployment approaches:
 
