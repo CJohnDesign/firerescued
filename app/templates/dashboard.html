@@ -95,12 +95,12 @@
     <div class="row g-4">
         <!-- Left Column - Key Metrics -->
         <div class="col-lg-7">
-            <!-- Apple-style AI Insights Card -->
+            <!-- Apple-style Training Brief Card -->
             <div class="insights-card mb-4">
                 <div class="apple-insights-header">
                     <div class="apple-insights-title">
-                        <h2><i class="fas fa-brain"></i> AI Insights</h2>
-                        <p class="apple-insights-subtitle">Personalized recommendations for your wellbeing</p>
+                        <h2><i class="fas fa-dumbbell"></i> Training Brief</h2>
+                        <p class="apple-insights-subtitle">Personalized training recommendations for your day</p>
                     </div>
                     <div class="apple-new-badge">
                         <i class="fas fa-star"></i> New
@@ -108,11 +108,11 @@
                 </div>
                 
                 <div id="ai-insights-preview">
-                    <p class="apple-insights-intro">Our AI analyzes your health patterns to provide personalized insights and actionable recommendations to help you prevent burnout and optimize your wellbeing.</p>
+                    <p class="apple-insights-intro">Our AI analyzes your health patterns to provide personalized training guidance and actionable recommendations to optimize your daily performance.</p>
                     
                     <button id="load-insights-btn" class="apple-insights-button">
                         <i class="fas fa-lightbulb"></i>
-                        <span id="insights-btn-text">Generate Insights</span>
+                        <span id="insights-btn-text">Generate Brief</span>
                     </button>
                     
                     <div id="insights-content" style="display: none;">
@@ -125,24 +125,24 @@
                     
                     <div class="apple-insights-footer">
                         <a href="{{ url_for('core.ai_insights') }}" class="apple-insights-more">
-                            View advanced analysis <i class="fas fa-chevron-right"></i>
+                            View detailed training analysis <i class="fas fa-chevron-right"></i>
                         </a>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Right Column - Burnout Risk & Insights -->
+        <!-- Right Column - Wellness Score & Insights -->
         <div class="col-lg-5">
-            <!-- Apple-style Burnout Risk Card -->
+            <!-- Apple-style Wellness Score Card -->
             <div class="burnout-risk-card mb-4">
                 <div class="apple-burnout-header">
                     <div class="apple-burnout-title">
-                        <h2><i class="fas fa-shield-alt"></i> Burnout Risk</h2>
-                        <p class="apple-burnout-subtitle">Your personal risk assessment for {{ selected_date.strftime('%A, %b %d') if not selected_date is string else selected_date }}</p>
+                        <h2><i class="fas fa-heart"></i> Wellness Score</h2>
+                        <p class="apple-burnout-subtitle">Your training intensity recommendation for {{ selected_date.strftime('%A, %b %d') if not selected_date is string else selected_date }}</p>
                     </div>
                     <div class="tooltip-icon" data-bs-toggle="tooltip" data-bs-html="true" 
-                         title="<div class='p-2'>Calculated from your recovery scores, HRV, sleep quality, and strain-recovery balance over time</div>">
+                         title="<div class='p-2'>Based on your recovery scores, HRV, sleep quality, and strain-recovery balance to optimize your training</div>">
                         <i class="fas fa-info-circle"></i>
                     </div>
                 </div>
@@ -150,78 +150,142 @@
                 <div class="apple-risk-summary">
                     <div class="apple-risk-gauge" 
                         {% if burnout_risk is not none and burnout_risk < 33 %}
-                            style="--gauge-color: var(--bs-success); --risk-percent: {{ burnout_risk }}%;"
+                            style="--gauge-color: var(--bs-success); --risk-percent: {{ 100 - burnout_risk }}%;"
                         {% elif burnout_risk is not none and burnout_risk < 66 %}
-                            style="--gauge-color: var(--bs-warning); --risk-percent: {{ burnout_risk }}%;"
+                            style="--gauge-color: var(--bs-warning); --risk-percent: {{ 100 - burnout_risk }}%;"
                         {% else %}
-                            style="--gauge-color: var(--bs-danger); --risk-percent: {{ burnout_risk }}%;"
+                            style="--gauge-color: var(--bs-danger); --risk-percent: {{ 100 - burnout_risk if burnout_risk is not none else 0 }}%;"
                         {% endif %}
                     >
                         <div class="apple-risk-value">
-                            {{ burnout_risk|round if burnout_risk is not none else "0" }}
+                            {{ (100 - burnout_risk)|round if burnout_risk is not none else "0" }}
                         </div>
                     </div>
                     
                     <div class="apple-risk-details">
-                        <div class="apple-risk-level {% if burnout_risk is not none and burnout_risk < 33 %}low{% elif burnout_risk is not none and burnout_risk < 66 %}medium{% else %}high{% endif %}">
+                        <div class="apple-risk-level {% if burnout_risk is not none and burnout_risk < 33 %}high{% elif burnout_risk is not none and burnout_risk < 66 %}medium{% else %}low{% endif %}">
                             {% if burnout_risk is not none and burnout_risk < 33 %}
-                            Low Risk
+                            High Intensity Day
                             {% elif burnout_risk is not none and burnout_risk < 66 %}
-                            Moderate Risk
+                            Moderate Intensity Day
                             {% elif burnout_risk is not none %}
-                            High Risk
+                            Recovery Day
                             {% else %}
-                            No Risk Data
+                            No Wellness Data
                             {% endif %}
                         </div>
                         
                         <p class="apple-risk-description">
                             {% if burnout_risk is not none and burnout_risk < 33 %}
-                            You're currently at low risk for burnout. Continue your healthy habits and monitor your metrics regularly.
+                            Your body is well-recovered and ready for high-intensity training. Perfect day for challenging workouts and pushing your limits.
                             {% elif burnout_risk is not none and burnout_risk < 66 %}
-                            Your burnout risk is moderate. Consider adding stress-reducing activities and more recovery time to your schedule.
+                            Your recovery is moderate. Focus on steady-state training and avoid overly intense sessions. Listen to your body.
                             {% elif burnout_risk is not none %}
-                            You're at high risk for burnout. Prioritize rest, stress management, and consider speaking with a healthcare professional.
+                            Your body needs recovery. Prioritize rest, light movement, and stress management. Avoid high-intensity training today.
                             {% else %}
-                            Add more data to get an accurate burnout risk assessment. Integrate with WHOOP for comprehensive analysis.
+                            Add more data to get personalized training recommendations. Integrate with WHOOP for comprehensive wellness analysis.
                             {% endif %}
                         </p>
                     </div>
                 </div>
                 
                 <div class="apple-risk-factors">
-                    <h3 class="apple-risk-factors-title">Contributing Factors</h3>
+                    <h3 class="apple-risk-factors-title">Wellness Factors</h3>
                     
                     <div class="apple-risk-factor">
                         <div class="apple-rf-label">Recovery</div>
                         <div class="apple-rf-bar-container">
-                            <div class="apple-rf-bar" style="width: 40%"></div>
+                            {% if selected_record is mapping and selected_record.get('recovery_score') is not none %}
+                                <div class="apple-rf-bar" style="width: {{ selected_record.get('recovery_score') }}%; 
+                                    background-color: {% if selected_record.get('recovery_score') > 66 %}#20c997{% elif selected_record.get('recovery_score') > 33 %}#ffc107{% else %}#dc3545{% endif %};"></div>
+                            {% elif not selected_record is mapping and selected_record.recovery_score is not none %}
+                                <div class="apple-rf-bar" style="width: {{ selected_record.recovery_score }}%; 
+                                    background-color: {% if selected_record.recovery_score > 66 %}#20c997{% elif selected_record.recovery_score > 33 %}#ffc107{% else %}#dc3545{% endif %};"></div>
+                            {% else %}
+                                <div class="apple-rf-bar" style="width: 0%; background-color: #6c757d;"></div>
+                            {% endif %}
                         </div>
-                        <div class="apple-rf-value">40%</div>
+                        <div class="apple-rf-value">
+                            {% if selected_record is mapping %}
+                                {{ selected_record.get('recovery_score')|round if selected_record.get('recovery_score') is not none else "–" }}
+                            {% else %}
+                                {{ selected_record.recovery_score|round if selected_record.recovery_score is not none else "–" }}
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="apple-risk-factor">
-                        <div class="apple-rf-label">Sleep Quality</div>
+                        <div class="apple-rf-label">Sleep Performance</div>
                         <div class="apple-rf-bar-container">
-                            <div class="apple-rf-bar" style="width: 30%; background-color: #20c997;"></div>
+                            {% if selected_record is mapping and selected_record.get('sleep_performance') is not none %}
+                                <div class="apple-rf-bar" style="width: {{ selected_record.get('sleep_performance') }}%; 
+                                    background-color: {% if selected_record.get('sleep_performance') > 66 %}#20c997{% elif selected_record.get('sleep_performance') > 33 %}#ffc107{% else %}#dc3545{% endif %};"></div>
+                            {% elif not selected_record is mapping and selected_record.sleep_performance is not none %}
+                                <div class="apple-rf-bar" style="width: {{ selected_record.sleep_performance }}%; 
+                                    background-color: {% if selected_record.sleep_performance > 66 %}#20c997{% elif selected_record.sleep_performance > 33 %}#ffc107{% else %}#dc3545{% endif %};"></div>
+                            {% else %}
+                                <div class="apple-rf-bar" style="width: 0%; background-color: #6c757d;"></div>
+                            {% endif %}
                         </div>
-                        <div class="apple-rf-value">30%</div>
+                        <div class="apple-rf-value">
+                            {% if selected_record is mapping %}
+                                {{ selected_record.get('sleep_performance')|round if selected_record.get('sleep_performance') is not none else "–" }}
+                            {% else %}
+                                {{ selected_record.sleep_performance|round if selected_record.sleep_performance is not none else "–" }}
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="apple-risk-factor">
                         <div class="apple-rf-label">HRV</div>
                         <div class="apple-rf-bar-container">
-                            <div class="apple-rf-bar" style="width: 15%; background-color: #6f42c1;"></div>
+                            {% if selected_record is mapping and selected_record.get('hrv') is not none %}
+                                {% set hrv_percent = (selected_record.get('hrv') / 100 * 100)|round %}
+                                {% if hrv_percent > 100 %}{% set hrv_percent = 100 %}{% endif %}
+                                <div class="apple-rf-bar" style="width: {{ hrv_percent }}%; 
+                                    background-color: {% if selected_record.get('hrv') > 50 %}#20c997{% elif selected_record.get('hrv') > 25 %}#ffc107{% else %}#dc3545{% endif %};"></div>
+                            {% elif not selected_record is mapping and selected_record.hrv is not none %}
+                                {% set hrv_percent = (selected_record.hrv / 100 * 100)|round %}
+                                {% if hrv_percent > 100 %}{% set hrv_percent = 100 %}{% endif %}
+                                <div class="apple-rf-bar" style="width: {{ hrv_percent }}%; 
+                                    background-color: {% if selected_record.hrv > 50 %}#20c997{% elif selected_record.hrv > 25 %}#ffc107{% else %}#dc3545{% endif %};"></div>
+                            {% else %}
+                                <div class="apple-rf-bar" style="width: 0%; background-color: #6c757d;"></div>
+                            {% endif %}
                         </div>
-                        <div class="apple-rf-value">15%</div>
+                        <div class="apple-rf-value">
+                            {% if selected_record is mapping %}
+                                {{ selected_record.get('hrv')|round(1) if selected_record.get('hrv') is not none else "–" }}
+                            {% else %}
+                                {{ selected_record.hrv|round(1) if selected_record.hrv is not none else "–" }}
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="apple-risk-factor">
-                        <div class="apple-rf-label">Strain Balance</div>
+                        <div class="apple-rf-label">Strain Score</div>
                         <div class="apple-rf-bar-container">
-                            <div class="apple-rf-bar" style="width: 15%; background-color: #fd7e14;"></div>
+                            {% if selected_record is mapping and selected_record.get('strain') is not none %}
+                                {% set strain_percent = (selected_record.get('strain') / 20 * 100)|round %}
+                                {% if strain_percent > 100 %}{% set strain_percent = 100 %}{% endif %}
+                                <div class="apple-rf-bar" style="width: {{ strain_percent }}%; 
+                                    background-color: {% if selected_record.get('strain') > 13 %}#dc3545{% elif selected_record.get('strain') > 10 %}#ffc107{% else %}#20c997{% endif %};"></div>
+                            {% elif not selected_record is mapping and selected_record.strain is not none %}
+                                {% set strain_percent = (selected_record.strain / 20 * 100)|round %}
+                                {% if strain_percent > 100 %}{% set strain_percent = 100 %}{% endif %}
+                                <div class="apple-rf-bar" style="width: {{ strain_percent }}%; 
+                                    background-color: {% if selected_record.strain > 13 %}#dc3545{% elif selected_record.strain > 10 %}#ffc107{% else %}#20c997{% endif %};"></div>
+                            {% else %}
+                                <div class="apple-rf-bar" style="width: 0%; background-color: #6c757d;"></div>
+                            {% endif %}
                         </div>
-                        <div class="apple-rf-value">15%</div>
+                        <div class="apple-rf-value">
+                            {% if selected_record is mapping %}
+                                {{ selected_record.get('strain')|round(1) if selected_record.get('strain') is not none else "–" }}
+                            {% else %}
+                                {{ selected_record.strain|round(1) if selected_record.strain is not none else "–" }}
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -290,7 +354,7 @@
                             </div>
                             
                             <div class="ti-metric">
-                                <span class="ti-label">Risk</span>
+                                <span class="ti-label">Wellness</span>
                                 <span class="ti-value
                                     {% if record is mapping and record.get('burnout_current') is not none %}
                                         {% if record.get('burnout_current') < 33 %}text-success
@@ -302,9 +366,9 @@
                                         {% else %}text-danger{% endif %}
                                     {% endif %}">
                                     {% if record is mapping %}
-                                        {{ record.get('burnout_current')|round if record.get('burnout_current') is not none else "–" }}%
+                                        {{ (100 - record.get('burnout_current'))|round if record.get('burnout_current') is not none else "–" }}%
                                     {% else %}
-                                        {{ record.burnout_current|round if record.burnout_current is not none else "–" }}%
+                                        {{ (100 - record.burnout_current)|round if record.burnout_current is not none else "–" }}%
                                     {% endif %}
                                 </span>
                             </div>
@@ -667,20 +731,20 @@
                             const htmlContent = marked.parse(data.insight);
                             insightsResult.innerHTML = htmlContent;
                             insightsResult.style.display = 'block';
-                            insightsBtnText.textContent = 'Refresh Insights';
+                            insightsBtnText.textContent = 'Refresh Brief';
                         } catch (parseError) {
                             console.error("Error parsing markdown:", parseError);
                             // Fallback to raw display in case of parsing error
                             insightsResult.innerHTML = `<div><pre>${data.insight}</pre></div>`;
                             insightsResult.style.display = 'block';
-                            insightsBtnText.textContent = 'Refresh Insights';
+                            insightsBtnText.textContent = 'Refresh Brief';
                         }
                     } else {
                         console.warn("API error:", data.error);
                         insightsResult.innerHTML = `
                             <div style="padding: 1rem; color: #856404; background-color: #fff3cd; border-radius: 8px;">
                                 <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
-                                ${data.error || 'Could not generate insights. Try adding more data.'}
+                                ${data.error || 'Could not generate brief. Try adding more data.'}
                             </div>
                         `;
                         insightsResult.style.display = 'block';
