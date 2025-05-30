@@ -96,11 +96,8 @@ def calculate_burnout_risk(recovery, mood):
     # Invert recovery (lower recovery = higher risk)
     recovery_factor = (100 - recovery) / 100
     
-    # Invert mood (lower mood = higher risk)
-    mood_factor = (10 - mood) / 10
-    
-    # Calculate weighted risk (0-100)
-    risk = (recovery_factor * 0.7 + mood_factor * 0.3) * 100
+    # Calculate weighted risk based on recovery only (0-100)
+    risk = recovery_factor * 100
     
     # Add some randomness
     risk = max(0, min(100, risk + random.uniform(-5, 5)))

@@ -238,13 +238,12 @@ def get_burnout_risk_score(metrics, all_records=None):
     """
     Advanced burnout risk prediction model that incorporates:
     1. Comprehensive physiological metrics (WHOOP data)
-    2. Subjective well-being assessment (mood)
-    3. Temporal analysis (trends over time)
-    4. Sleep quality assessment
-    5. Strain-to-recovery balance
+    2. Temporal analysis (trends over time)
+    3. Sleep quality assessment
+    4. Strain-to-recovery balance
     
     This model is based on research into physiological markers of burnout,
-    including HRV depression, sleep disruption, and subjective mood changes.
+    including HRV depression, sleep disruption, and strain-recovery balance.
     
     Args:
         metrics: Current day's metrics dictionary containing WHOOP data
@@ -280,7 +279,7 @@ def get_burnout_risk_score(metrics, all_records=None):
             # Fallback to just using current day
             normalized_weights = [1.0] + [0.0] * len(prior_metrics)
         
-        # Component 1: Recovery Trend (25%)
+        # Component 1: Recovery Trend (40%)
         # Lower recovery scores increase burnout risk
         recovery_risk_values = []
         
@@ -325,7 +324,7 @@ def get_burnout_risk_score(metrics, all_records=None):
         if hrv_trend > 0:  # Only consider negative trends (increasing risk)
             hrv_risk_score = hrv_risk_score * 0.8 + hrv_trend * 0.2
         
-        # Component 3: Sleep Quality (15%)
+        # Component 3: Sleep Quality (30%)
         # Poor sleep quality is both a cause and symptom of burnout
         sleep_risk_values = []
         
@@ -374,42 +373,12 @@ def get_burnout_risk_score(metrics, all_records=None):
         else:
             strain_recovery_risk = 50  # Neutral value
         
-        # Component 5: Mood Assessment (30%)
-        # Subjective mood is a key indicator of burnout state
-        mood_risk_values = []
-        mood_trend = 0
-        
-        for i, m in enumerate(all_metrics):
-            if m and m.get('mood_rating') is not None:
-                # Scale from 1-10 to 0-100 (invert so lower mood = higher risk)
-                mood_risk = 100 - ((m.get('mood_rating') - 1) / 9 * 100)
-                mood_risk_values.append((mood_risk, normalized_weights[i]))
-        
-        if mood_risk_values:
-            mood_risk_score = sum(r * w for r, w in mood_risk_values)
-            
-            # Calculate mood trend if we have enough data points
-            if len(mood_risk_values) >= 3:
-                recent_mood = [m.get('mood_rating') for m in all_metrics[:3] if m and m.get('mood_rating') is not None]
-                if len(recent_mood) >= 2:
-                    # Negative trend (decreasing mood) increases risk
-                    mood_trend = -1 * (recent_mood[0] - sum(recent_mood[1:]) / len(recent_mood[1:]))
-                    mood_trend = max(-4, min(4, mood_trend))  # Limit extreme values
-                    mood_trend = mood_trend * 12.5  # Scale to roughly 0-50
-        else:
-            mood_risk_score = 50  # Neutral value
-        
-        # Add mood trend factor to risk score (weight: 20% of mood component)
-        if mood_trend > 0:  # Only consider negative trends (increasing risk)
-            mood_risk_score = mood_risk_score * 0.8 + mood_trend * 0.2
-        
         # Calculate total burnout risk score - weighted combination of all components
         component_weights = {
-            'recovery': 0.25, 
+            'recovery': 0.40, 
             'hrv': 0.15, 
-            'sleep': 0.15, 
-            'strain_recovery': 0.15, 
-            'mood': 0.30
+            'sleep': 0.30, 
+            'strain_recovery': 0.15
         }
         
         # Calculate the final risk score
@@ -417,8 +386,7 @@ def get_burnout_risk_score(metrics, all_records=None):
             recovery_risk_score * component_weights['recovery'] +
             hrv_risk_score * component_weights['hrv'] +
             sleep_risk_score * component_weights['sleep'] +
-            strain_recovery_risk * component_weights['strain_recovery'] +
-            mood_risk_score * component_weights['mood']
+            strain_recovery_risk * component_weights['strain_recovery']
         )
         
         # Calculate the burnout trend (7-day)
@@ -444,16 +412,12 @@ def get_burnout_risk_score(metrics, all_records=None):
         # Fallback to a simpler calculation if there's an error
         if metrics.get('recovery_score') is not None:
             recovery = metrics.get('recovery_score', 50)
-            mood = metrics.get('mood_rating', 5)
             
             # Invert recovery (lower recovery = higher risk)
             recovery_factor = (100 - recovery) / 100
             
-            # Invert mood (lower mood = higher risk)
-            mood_factor = (10 - mood) / 10 if mood else 0.5
-            
-            # Calculate weighted risk (0-100)
-            simple_risk = (recovery_factor * 0.7 + mood_factor * 0.3) * 100
+            # Calculate weighted risk based on recovery only (0-100)
+            simple_risk = recovery_factor * 100
             return min(100, max(0, simple_risk))
         
         return 50  # Neutral value

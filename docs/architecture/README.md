@@ -9,7 +9,7 @@
 
 ## 🏗️ System Overview
 
-Fire Rescued is a Flask-based web application that integrates WHOOP health data with user-reported mood tracking to predict and prevent burnout. The system follows a modular, scalable architecture with clear separation of concerns.
+Fire Rescued is a Flask-based web application that integrates WHOOP health data to predict and prevent burnout. The system follows a modular, scalable architecture with clear separation of concerns.
 
 ### High-Level Architecture
 

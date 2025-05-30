@@ -1,45 +1,74 @@
-# Fire Rescued - Project Context for AI Assistants
+# Fire Rescued
 
-## Project Overview
-The Fire Rescued is a web application that helps predict and prevent burnout by analyzing WHOOP health data combined with self-reported mood ratings. It leverages AI to provide personalized insights and recommendations based on health patterns.
+The Fire Rescued is a web application that helps predict and prevent burnout by analyzing WHOOP health data. It leverages AI to provide personalized insights and recommendations based on health patterns.
 
 ## Key Features
-- **WHOOP API Integration:** Automatically fetches daily health metrics (recovery score, strain, HRV, sleep quality)
-- **Mood Tracking:** User interface to log daily mood ratings (1-10) and notes
-- **Burnout Risk Algorithm:** Sophisticated algorithm using multiple health metrics
-- **Apple-Inspired UI:** Modern, clean design with insights cards and simplified visualizations
-- **AI Insights:** Personalized recommendations and analysis using OpenAI
-- **Cloud Synchronization:** Secure data storage with Supabase (with SQLite fallback)
 
-## Tech Stack
-- **Backend:** Python, Flask (with Blueprint structure)
-- **Database:** Supabase (PostgreSQL) with SQLite fallback
-- **Authentication:** Supabase Auth
-- **Data Analysis:** Pandas, NumPy, SciPy
-- **Visualization:** Plotly interactive charts
-- **AI/ML:** OpenAI API integration
-- **Frontend:** HTML, CSS, JavaScript with Bootstrap 5
-- **Design Philosophy:** Apple-inspired minimalist design with clear insights
+- **WHOOP Integration:** Seamless data sync with WHOOP wearables
+- **AI Insights:** Powered by OpenAI for personalized recommendations  
+- **Burnout Risk Algorithm:** Sophisticated algorithm using multiple health metrics
+- **Visual Analytics:** Interactive charts and trend analysis
+- **Daily Tracking:** Easy mood input and metric tracking
 
 ## Project Structure
+
 ```
 /Users/wesdalton/Desktop/Burnout/
-├── app/                  # Main application package
-│   ├── __init__.py       # App factory and configuration
-│   ├── api/              # API endpoints
-│   ├── auth/             # Authentication
-│   ├── core/             # Main routes and functionality
-│   ├── database/         # Database access (Supabase & SQLite)
-│   ├── services/         # Business logic
-│   │   ├── ai_service.py         # OpenAI integration for insights
-│   │   ├── analysis_service.py   # Data analysis and visualization
-│   │   └── whoop_service.py      # WHOOP API integration
-│   ├── static/           # CSS, JS, images
-│   ├── templates/        # HTML templates
-│   └── utils/            # Utility functions and scripts
-├── run.py                # Application entry point
-└── requirements.txt      # Python dependencies
+├── app/
+│   ├── __init__.py              # Flask app factory
+│   ├── auth/                    # Authentication routes
+│   ├── core/                    # Main application routes
+│   ├── database/                # Database models and operations
+│   ├── prompts/                 # AI system prompts
+│   ├── services/                # Business logic services
+│   ├── static/                  # CSS, JS, images
+│   ├── templates/               # Jinja2 HTML templates
+│   └── utils/                   # Utility functions
+├── docs/                        # Project documentation
+├── venv/                        # Virtual environment
+├── .env                         # Environment variables
+├── requirements.txt             # Python dependencies
+└── run.py                       # Application entry point
 ```
+
+## Database Schema
+
+### Metrics Table
+- user_id (Foreign Key)
+- date (Date)
+- recovery_score (Integer 0-100)
+- hrv (Float - Heart Rate Variability)
+- resting_hr (Float - Resting Heart Rate)
+- strain (Float 0-21)
+- sleep_quality (Float 0-100)
+- burnout_current (calculated risk score 0-100)
+
+### Burnout Risk Calculation
+The burnout risk algorithm uses multiple factors:
+- **Recovery Score (40%):** WHOOP recovery percentage
+- **Sleep Quality (30%):** Sleep efficiency and duration
+- **HRV Analysis (15%):** Heart rate variability trends  
+- **Strain Balance (15%):** Strain-to-recovery ratio
+
+## Current Features
+
+1. WHOOP data integration and sync
+2. Daily mood tracking interface
+3. Burnout risk gauge with actionable recommendations
+4. Time series visualization of health metrics
+5. AI-powered insights and recommendations
+6. Multi-day trend analysis
+7. Responsive design with modern UI
+
+## Recent Updates
+
+- Added comprehensive AI insights system with OpenAI integration
+- Enhanced dashboard with Apple-inspired design elements
+- Implemented sophisticated burnout risk calculation model
+- Added time series plots with multiple health metrics
+- Improved mobile responsiveness and accessibility
+- Implemented a more visually appealing burnout risk display
+- Added correlation analysis between different health metrics
 
 ## Key Templates
 - **dashboard.html** - Main user interface with health metrics visualization

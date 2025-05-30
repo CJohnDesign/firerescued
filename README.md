@@ -1,6 +1,15 @@
-# Fire Rescued
+# 🔥 Fire Rescued - AI-Powered Burnout Prevention Platform
 
-A sophisticated web application that helps predict and prevent burnout by analyzing your WHOOP health data combined with self-reported mood ratings. It leverages AI to provide personalized insights and recommendations based on your unique health patterns.
+A sophisticated web application that helps predict and prevent burnout by analyzing your WHOOP health data. It leverages AI to provide personalized insights and recommendations based on your unique health patterns.
+
+## ✨ Key Features
+
+- **🔗 WHOOP Integration**: Seamless synchronization with your WHOOP wearable device
+- **🤖 AI-Powered Insights**: OpenAI-driven analysis and personalized recommendations
+- **📊 Advanced Analytics**: Sophisticated burnout risk algorithm using multiple health metrics
+- **📈 Visual Dashboard**: Interactive charts, trend analysis, and health correlations
+- **🎯 Preventative Approach**: Early warning system to prevent burnout before it happens
+- **🏥 Firefighter-Focused**: Designed specifically for emergency responders and tactical athletes
 
 ## Features
 
