@@ -46,8 +46,8 @@ A sophisticated web application that helps predict and prevent burnout by analyz
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/burnout-predictor.git
-   cd burnout-predictor
+   git clone https://github.com/cjohndesign/firerescued.git
+   cd firerescued
    ```
 
 2. **Set up virtual environment**
